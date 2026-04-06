@@ -59,7 +59,20 @@ const assetsData = [
   { name: "Outros", value: 0 },
 ];
 
-const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const months = [
+  { label: "Jan", value: 1 },
+  { label: "Fev", value: 2 },
+  { label: "Mar", value: 3 },
+  { label: "Abr", value: 4 },
+  { label: "Mai", value: 5 },
+  { label: "Jun", value: 6 },
+  { label: "Jul", value: 7 },
+  { label: "Ago", value: 8 },
+  { label: "Set", value: 9 },
+  { label: "Out", value: 10 },
+  { label: "Nov", value: 11 },
+  { label: "Dez", value: 12 },
+];
 
 const categories = [
   { label: "Moradia", value: 0, icon: House, className: "purple" },
@@ -75,7 +88,7 @@ function formatCurrency(value) {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(Number(value) || 0);
+  }).format(Number(value) || 1);
 }
 
 function SummaryCard({ title, value, subtitle, icon: Icon, gradient = false }) {
@@ -98,24 +111,18 @@ function SummaryCard({ title, value, subtitle, icon: Icon, gradient = false }) {
   );
 }
 
-export default function DashboardLayout({ user, resumo }) {
+export default function DashboardLayout({ user, resumo, selectedMonth, setSelectedMonth }) {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState("Dez");
 
   const dashboard = useMemo(() => {
-    const current =
-      monthlyData.find((item) => item.month === selectedMonth) ||
-      monthlyData[monthlyData.length - 1];
+    const incomeGoal = 50;
 
-    const incomeGoal = 50000;
-
-    const income = resumo?.income ?? current.income;
-    const expenses = resumo?.expenses ?? current.expenses;
-    const balance = resumo?.balance ?? income - expenses;
+    const income = resumo?.income ?? 0;
+    const expenses = resumo?.expenses ?? 0;
+    const balance = resumo?.balance ?? 0;
     const netWorth = resumo?.netWorth ?? 0;
 
     return {
-      ...current,
       balance,
       income,
       expenses,
@@ -123,7 +130,7 @@ export default function DashboardLayout({ user, resumo }) {
       progress: incomeGoal > 0 ? Math.round((income / incomeGoal) * 100) : 0,
       netWorth,
     };
-  }, [selectedMonth, resumo]);
+  }, [resumo]);
 
   return (
     <div className="app">
@@ -140,11 +147,11 @@ export default function DashboardLayout({ user, resumo }) {
           <nav className="sidebar-months">
             {months.map((month) => (
               <button
-                key={month}
-                className={`month-button ${selectedMonth === month ? "active" : ""}`}
-                onClick={() => setSelectedMonth(month)}
+                key={month.value}
+                className={`month-button ${selectedMonth === month.value ? "active" : ""}`}
+                onClick={() => setSelectedMonth(month.value)}
               >
-                {month}
+                {month.label}
               </button>
             ))}
           </nav>
@@ -182,9 +189,10 @@ export default function DashboardLayout({ user, resumo }) {
 
               <div className="topbar-pill">
                 <CalendarDays size={18} />
-                <span>Mês: {selectedMonth}</span>
+                <span>
+                  Mês: {months.find((m) => m.value === selectedMonth)?.label || "Jan"}
+                </span>
               </div>
-
               <div className="profile-box">
                 <div className="profile-avatar">
                   {(user?.name || user?.nome || "U").charAt(0).toUpperCase()}
@@ -324,7 +332,7 @@ export default function DashboardLayout({ user, resumo }) {
                   <div>
                     <p className="goal-percent">{dashboard.progress}%</p>
                     <h3>Meta de receita</h3>
-                    <p className="card-subtitle">Progresso do mês</p>
+                    <p className="card-subtitle">Progresso do Ano</p>
                   </div>
                   <ShieldCheck size={22} className="goal-icon" />
                 </div>

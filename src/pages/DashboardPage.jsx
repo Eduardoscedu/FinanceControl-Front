@@ -6,26 +6,70 @@ import DashboardLayout from "../components/DashboardLayout";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [resumo, setResumo] = useState(null);
+  const [charts, setCharts] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadDashboard() {
-    try {
-      const [userResponse, resumoResponse] = await Promise.all([
-        api.get("/me"),
-        api.get("/dashboard/resumo"),
-      ]);
+  const [selectedMonth, setSelectedMonth] = useState(1);
+  const [selectedYear] = useState(2026);
 
-      setUser(userResponse.data);
-      setResumo(resumoResponse.data);
+  async function loadUser() {
+    try {
+      const response = await api.get("/me");
+      setUser(response.data);
+      return true;
     } catch (error) {
-      console.error("Erro ao carregar dashboard:", error);
+      console.error("Erro ao carregar usuário:", error);
+      return false;
+    }
+  }
+
+  async function loadResumo(month, year) {
+    try {
+      const response = await api.get(`/dashboard/resumo?month=${month}&year=${year}`);
+      setResumo(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar resumo:", error);
+      setResumo({
+        balance: 0,
+        income: 0,
+        expenses: 0,
+        netWorth: 0,
+      });
+    }
+  }
+
+  async function loadCharts(month, year) {
+    try {
+      const response = await api.get(`/dashboard/charts?month=${month}&year=${year}`);
+      setCharts(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar gráficos:", error);
+      setCharts({
+        monthlyData: [],
+        categoryData: [],
+        incomeSourceData: [],
+      });
+    }
+  }
+
+  async function loadDashboard(month, year) {
+    setLoading(true);
+
+    const userLoaded = await loadUser();
+
+    if (!userLoaded) {
       removeToken();
       navigate("/");
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    await loadResumo(month, year);
+    await loadCharts(month, year);
+
+    setLoading(false);
   }
 
   function handleLogout() {
@@ -34,11 +78,15 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    loadDashboard(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear]);
 
   if (loading) {
-    return <div style={{ padding: "24px", color: "#fff" }}>Carregando dashboard...</div>;
+    return (
+      <div style={{ minHeight: "100vh", background: "#050b2a", color: "#fff", padding: "24px" }}>
+        Carregando dashboard...
+      </div>
+    );
   }
 
   return (
@@ -67,7 +115,13 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <DashboardLayout user={user} resumo={resumo} />
+      <DashboardLayout
+        user={user}
+        resumo={resumo}
+        charts={charts}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+      />
     </div>
   );
 }
