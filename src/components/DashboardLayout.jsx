@@ -1,16 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarDays,
   Bell,
-  House,
-  Car,
-  User,
   PiggyBank,
   TrendingUp,
   TrendingDown,
-  CreditCard,
   ShieldCheck,
   Wallet,
 } from "lucide-react";
@@ -29,36 +25,6 @@ import {
   Cell,
 } from "recharts";
 
-const monthlyData = [
-  { month: "Jan", income: 0, expenses: 0 },
-  { month: "Fev", income: 0, expenses: 0 },
-  { month: "Mar", income: 0, expenses: 0 },
-  { month: "Abr", income: 0, expenses: 0 },
-  { month: "Mai", income: 0, expenses: 0 },
-  { month: "Jun", income: 0, expenses: 0 },
-  { month: "Jul", income: 0, expenses: 0 },
-  { month: "Ago", income: 0, expenses: 0 },
-  { month: "Set", income: 0, expenses: 0 },
-  { month: "Out", income: 0, expenses: 0 },
-  { month: "Nov", income: 0, expenses: 0 },
-  { month: "Dez", income: 0, expenses: 0 },
-];
-
-const incomeSourceData = [
-  { name: "Salário", value: 13000 },
-  { name: "Freelas", value: 8000 },
-  { name: "Invest.", value: 2100 },
-  { name: "Outros", value: 950 },
-];
-
-const assetsData = [
-  { name: "Reserva", value: 0 },
-  { name: "Investimentos", value: 0 },
-  { name: "Conta", value: 0 },
-  { name: "Cripto", value: 0 },
-  { name: "Outros", value: 0 },
-];
-
 const months = [
   { label: "Jan", value: 1 },
   { label: "Fev", value: 2 },
@@ -74,21 +40,14 @@ const months = [
   { label: "Dez", value: 12 },
 ];
 
-const categories = [
-  { label: "Moradia", value: 0, icon: House, className: "purple" },
-  { label: "Pessoal", value: 0, icon: User, className: "pink" },
-  { label: "Transporte", value: 0, icon: Car, className: "orange" },
-  { label: "Assinaturas", value: 0, icon: CreditCard, className: "cyan" },
-];
-
-const pieColors = ["#ef476f", "#7c3aed", "#14b8a6", "#cbd5e1", "#22c55e"];
+const pieColors = ["#ef476f", "#7c3aed", "#14b8a6", "#cbd5e1", "#22c55e", "#f97316"];
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(Number(value) || 1);
+  }).format(Number(value) || 0);
 }
 
 function SummaryCard({ title, value, subtitle, icon: Icon, gradient = false }) {
@@ -111,26 +70,85 @@ function SummaryCard({ title, value, subtitle, icon: Icon, gradient = false }) {
   );
 }
 
-export default function DashboardLayout({ user, resumo, selectedMonth, setSelectedMonth }) {
+export default function DashboardLayout({
+  user,
+  resumo,
+  charts,
+  selectedMonth,
+  setSelectedMonth,
+}) {
   const navigate = useNavigate();
 
   const dashboard = useMemo(() => {
-    const incomeGoal = 50;
+    const incomeGoal = 5000;
 
-    const income = resumo?.income ?? 0;
-    const expenses = resumo?.expenses ?? 0;
-    const balance = resumo?.balance ?? 0;
-    const netWorth = resumo?.netWorth ?? 0;
+    const income = Number(resumo?.income) || 0;
+    const expenses = Number(resumo?.expenses) || 0;
+    const balance = Number(resumo?.balance) || 0;
+    const netWorth = Number(resumo?.netWorth) || balance;
 
     return {
-      balance,
       income,
       expenses,
+      balance,
+      netWorth,
       incomeGoal,
       progress: incomeGoal > 0 ? Math.round((income / incomeGoal) * 100) : 0,
-      netWorth,
     };
   }, [resumo]);
+
+  
+  const monthNames = [
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+    "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+  ];
+
+  function normalizeMonthLabel(month) {
+    const monthNumber = Number(month);
+
+    if (!Number.isNaN(monthNumber) && monthNumber >= 1 && monthNumber <= 12) {
+      return monthNames[monthNumber - 1];
+    }
+
+    return month;
+  }
+
+  const monthlyData = useMemo(() => {
+    return charts?.monthlyData?.map((item) => ({
+      month: normalizeMonthLabel(item.month),
+      income: Number(item.income) || 0,
+      expenses: Number(item.expenses) || 0,
+    })) ?? [];
+  }, [charts]);
+
+  const incomeSourceData = useMemo(() => {
+    return (
+      charts?.incomeSourceData?.map((item) => ({
+        name: item.name,
+        value: Number(item.value) || 0,
+      })) ?? []
+    );
+  }, [charts]);
+
+  const categoryExpenseData = useMemo(() => {
+    return (
+      charts?.categoryData?.map((item) => ({
+        label: item.label,
+        value: Number(item.value) || 0,
+      })) ?? []
+    );
+  }, [charts]);
+
+  const pieData = categoryExpenseData.map((item) => ({
+    name: item.label,
+    value: item.value,
+  }));
+
+  const maxExpense =
+    monthlyData.length > 0 ? Math.max(...monthlyData.map((item) => item.expenses)) : 0;
+
+  const maxIncome =
+    monthlyData.length > 0 ? Math.max(...monthlyData.map((item) => item.income)) : 0;
 
   return (
     <div className="app">
@@ -189,10 +207,9 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
 
               <div className="topbar-pill">
                 <CalendarDays size={18} />
-                <span>
-                  Mês: {months.find((m) => m.value === selectedMonth)?.label || "Jan"}
-                </span>
+                <span>Mês: {months.find((m) => m.value === selectedMonth)?.label || "Jan"}</span>
               </div>
+
               <div className="profile-box">
                 <div className="profile-avatar">
                   {(user?.name || user?.nome || "U").charAt(0).toUpperCase()}
@@ -221,19 +238,28 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
                     <h3>Gastos do mês</h3>
                     <p className="card-big-number">{formatCurrency(dashboard.expenses)}</p>
                   </div>
+
                   <div className="chart chart-sm">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
-                        <Line
-                          type="monotone"
-                          dataKey="expenses"
-                          stroke="#fb7185"
-                          strokeWidth={3}
-                          dot={false}
-                        />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {monthlyData.length === 0 ? (
+                      <p className="card-subtitle">Sem dados para exibir.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={monthlyData}>
+                          <XAxis dataKey="month" hide />
+                          <Line
+                            type="monotone"
+                            dataKey="expenses"
+                            stroke="#fb7185"
+                            strokeWidth={3}
+                            dot={false}
+                          />
+                          <Tooltip
+                            formatter={(value) => formatCurrency(value)}
+                            labelFormatter={(label) => label}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
 
@@ -241,19 +267,27 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
                   <div className="card-header">
                     <h3>Fontes de receita</h3>
                   </div>
+
                   <div className="chart chart-md">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={incomeSourceData}>
-                        <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                        <YAxis
-                          stroke="#94a3b8"
-                          tickFormatter={(v) => `${Math.round(v / 1000)}k`}
-                        />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                        <Bar dataKey="value" fill="#35c9e3" radius={[10, 10, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {incomeSourceData.length === 0 ? (
+                      <p className="card-subtitle">Nenhuma entrada cadastrada neste mês.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={incomeSourceData}>
+                          <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                          <YAxis
+                            stroke="#94a3b8"
+                            tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                          />
+                          <Tooltip
+                            formatter={(value) => formatCurrency(value)}
+                            labelFormatter={(label) => label}
+                          />
+                          <Bar dataKey="value" fill="#35c9e3" radius={[10, 10, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
 
@@ -262,19 +296,28 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
                     <h3>Receitas do mês</h3>
                     <p className="card-big-number">{formatCurrency(dashboard.income)}</p>
                   </div>
+
                   <div className="chart chart-sm">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
-                        <Line
-                          type="monotone"
-                          dataKey="income"
-                          stroke="#f97316"
-                          strokeWidth={3}
-                          dot={false}
-                        />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {monthlyData.length === 0 ? (
+                      <p className="card-subtitle">Sem dados para exibir.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={monthlyData}>
+                          <XAxis dataKey="month" hide />
+                          <Line
+                            type="monotone"
+                            dataKey="income"
+                            stroke="#f97316"
+                            strokeWidth={3}
+                            dot={false}
+                          />
+                          <Tooltip
+                            formatter={(value) => formatCurrency(value)}
+                            labelFormatter={(label) => label}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               </div>
@@ -285,43 +328,48 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
                   <div className="chart-legend">
                     <span className="legend-expense">
                       <TrendingDown size={16} />
-                      Máx. despesas:{" "}
-                      {formatCurrency(Math.max(...monthlyData.map((item) => item.expenses)))}
+                      Máx. despesas: {formatCurrency(maxExpense)}
                     </span>
                     <span className="legend-income">
                       <TrendingUp size={16} />
-                      Máx. receitas:{" "}
-                      {formatCurrency(Math.max(...monthlyData.map((item) => item.income)))}
+                      Máx. receitas: {formatCurrency(maxIncome)}
                     </span>
                   </div>
                 </div>
 
                 <div className="chart chart-lg">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.08)" />
-                      <XAxis dataKey="month" stroke="#94a3b8" />
-                      <YAxis
-                        stroke="#94a3b8"
-                        tickFormatter={(v) => `${Math.round(v / 1000)}k`}
-                      />
-                      <Tooltip formatter={(value) => formatCurrency(value)} />
-                      <Line
-                        type="monotone"
-                        dataKey="expenses"
-                        stroke="#fb7185"
-                        strokeWidth={3}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="income"
-                        stroke="#2dd4bf"
-                        strokeWidth={3}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {monthlyData.length === 0 ? (
+                    <p className="card-subtitle">Sem dados para exibir.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={monthlyData}>
+                        <CartesianGrid stroke="rgba(255,255,255,0.08)" />
+                        <XAxis dataKey="month" stroke="#94a3b8" />
+                        <YAxis
+                          stroke="#94a3b8"
+                          tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                        />
+                        <Tooltip
+                            formatter={(value) => formatCurrency(value)}
+                            labelFormatter={(label) => label}
+                          />
+                        <Line
+                          type="monotone"
+                          dataKey="expenses"
+                          stroke="#fb7185"
+                          strokeWidth={3}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="income"
+                          stroke="#2dd4bf"
+                          strokeWidth={3}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>
@@ -359,21 +407,27 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
                 </div>
 
                 <div className="category-list">
-                  {categories.map((item) => {
-                    const Icon = item.icon;
-
-                    return (
+                  {categoryExpenseData.length === 0 ? (
+                    <p className="card-subtitle">Nenhum gasto cadastrado neste mês.</p>
+                  ) : (
+                    categoryExpenseData.map((item, index) => (
                       <div className="category-item" key={item.label}>
                         <div className="category-item__left">
-                          <div className={`category-icon ${item.className}`}>
-                            <Icon size={18} />
+                          <div
+                            className={`category-icon ${
+                              ["purple", "pink", "orange", "cyan"][index % 4]
+                            }`}
+                          >
+                            <Wallet size={18} />
                           </div>
+
                           <span>{item.label}</span>
                         </div>
+
                         <strong>{formatCurrency(item.value)}</strong>
                       </div>
-                    );
-                  })}
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -386,37 +440,44 @@ export default function DashboardLayout({ user, resumo, selectedMonth, setSelect
                 </div>
 
                 <div className="notification-box">
-                  3 contas vencem em breve. Paga isso antes que os juros façam cosplay de assalto.
+                  Seus gráficos agora usam os dados reais cadastrados. Finalmente pararam de fingir.
                 </div>
               </div>
 
               <div className="card">
                 <div className="card-header">
-                  <h3>Distribuição de ativos</h3>
+                  <h3>Distribuição de gastos</h3>
                 </div>
 
                 <div className="chart chart-pie">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={assetsData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={55}
-                        outerRadius={90}
-                        paddingAngle={4}
-                      >
-                        {assetsData.map((item, index) => (
-                          <Cell key={item.name} fill={pieColors[index % pieColors.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(value)} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {pieData.length === 0 ? (
+                    <p className="card-subtitle">Sem dados para exibir.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={55}
+                          outerRadius={90}
+                          paddingAngle={4}
+                        >
+                          {pieData.map((item, index) => (
+                            <Cell key={item.name} fill={pieColors[index % pieColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                            formatter={(value) => formatCurrency(value)}
+                            labelFormatter={(label) => label}
+                          />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
 
                 <div className="asset-grid">
-                  {assetsData.map((asset, index) => (
+                  {pieData.map((asset, index) => (
                     <div className="asset-item" key={asset.name}>
                       <span
                         className="asset-dot"
