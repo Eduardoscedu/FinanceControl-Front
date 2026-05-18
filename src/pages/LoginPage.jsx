@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { saveToken } from "../services/auth";
 import "./LoginPage.css";
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -76,6 +77,14 @@ export default function LoginPage() {
         <button type="submit" disabled={loading}>
           {loading ? "Entrando..." : "Entrar"}
         </button>
+        <div style={{ marginTop: '24px', textAlign: 'center' }}>
+        <p className="card-subtitle" style={{ fontSize: '0.95rem' }}>
+          Ainda não tem uma conta?{' '}
+          <Link to="/cadastro" style={{ color: '#38bdf8', fontWeight: 'bold', textDecoration: 'none' }}>
+            Cadastre-se aqui
+          </Link>
+        </p>
+      </div>
       </form>
     </div>
   );

@@ -4,11 +4,15 @@ import DashboardPage from "./pages/DashboardPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Cadastro from './pages/Cadastro';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
+          <Route path="/cadastro" element={<Cadastro />} />
+
         <Route path="/" element={<LoginPage />} />
 
         <Route
