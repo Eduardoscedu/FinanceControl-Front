@@ -25,7 +25,7 @@ export default function Cadastro() {
       
       if (response.status === 201 || response.status === 200) {
         alert('Conta criada com sucesso!');
-        navigate('/login');
+        navigate('/LoginPage');
       }
     } catch (err) {
       console.error("Erro na API:", err);
@@ -95,6 +95,7 @@ export default function Cadastro() {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
+                minLength="6"
                 required
               />
             </div>
