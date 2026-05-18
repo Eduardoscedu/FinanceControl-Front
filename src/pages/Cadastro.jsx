@@ -25,7 +25,7 @@ export default function Cadastro() {
       
       if (response.status === 201 || response.status === 200) {
         alert('Conta criada com sucesso!');
-        navigate('/LoginPage');
+        navigate('/');
       }
     } catch (err) {
       console.error("Erro na API:", err);
