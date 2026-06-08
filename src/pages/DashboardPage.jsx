@@ -121,6 +121,9 @@ export default function DashboardPage() {
         charts={charts}
         selectedMonth={selectedMonth}
         setSelectedMonth={setSelectedMonth}
+        onGoalUpdated={() =>
+          loadResumo(selectedMonth, selectedYear)
+        }
       />
     </div>
   );

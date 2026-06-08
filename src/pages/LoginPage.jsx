@@ -52,7 +52,7 @@ export default function LoginPage() {
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
         <h1>Entrar</h1>
-        <p>Conecte seu painel financeiro à sua API.</p>
+        <p>Conecte-se ao seu painel financeiro.</p>
 
         <input
           type="email"

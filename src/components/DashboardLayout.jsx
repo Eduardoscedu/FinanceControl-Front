@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -76,27 +77,72 @@ export default function DashboardLayout({
   charts,
   selectedMonth,
   setSelectedMonth,
+  onGoalUpdated,
 }) {
   const navigate = useNavigate();
 
-  const dashboard = useMemo(() => {
-    const incomeGoal = 5000;
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalPercentage, setGoalPercentage] = useState(
+    resumo?.savingGoalPercentage ?? 10
+  );
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [goalMessage, setGoalMessage] = useState("");
 
+  const dashboard = useMemo(() => {
     const income = Number(resumo?.income) || 0;
     const expenses = Number(resumo?.expenses) || 0;
     const balance = Number(resumo?.balance) || 0;
     const netWorth = Number(resumo?.netWorth) || balance;
+
+    const savingGoalPercentage = Number(resumo?.savingGoalPercentage) || 10;
+    const savingGoalAmount = Number(resumo?.savingGoalAmount) || 0;
+    const actualSavedAmount = Number(resumo?.actualSavedAmount) || balance;
+    const goalAchieved = Boolean(resumo?.goalAchieved);
+    const financialMessage =
+      resumo?.financialMessage || "Cadastre entradas e despesas para acompanhar sua meta.";
+
+    const progress =
+      savingGoalAmount > 0
+        ? Math.round((actualSavedAmount / savingGoalAmount) * 100)
+        : 0;
 
     return {
       income,
       expenses,
       balance,
       netWorth,
-      incomeGoal,
-      progress: incomeGoal > 0 ? Math.round((income / incomeGoal) * 100) : 0,
+      savingGoalPercentage,
+      savingGoalAmount,
+      actualSavedAmount,
+      goalAchieved,
+      financialMessage,
+      progress,
     };
   }, [resumo]);
 
+  async function handleSaveGoal(event) {
+    event.preventDefault();
+    setSavingGoal(true);
+    setGoalMessage("");
+
+    try {
+      await api.put("/goals/monthly-saving", {
+        percentage: Number(goalPercentage),
+      });
+
+      setGoalMessage("Meta atualizada com sucesso.");
+      setShowGoalModal(false);
+
+      if (onGoalUpdated) {
+        await onGoalUpdated();
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar meta:", error);
+      setGoalMessage("Erro ao atualizar meta.");
+    } finally {
+      setSavingGoal(false);
+    }
+  }
   
   const monthNames = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -342,7 +388,7 @@ export default function DashboardLayout({
                     <p className="card-subtitle">Sem dados para exibir.</p>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
+                      <LineChart data={monthlyData}>  
                         <CartesianGrid stroke="rgba(255,255,255,0.08)" />
                         <XAxis dataKey="month" stroke="#94a3b8" />
                         <YAxis
@@ -378,16 +424,18 @@ export default function DashboardLayout({
               <div className="card">
                 <div className="goal-header">
                   <div>
-                    <p className="goal-percent">{dashboard.progress}%</p>
-                    <h3>Meta de receita</h3>
-                    <p className="card-subtitle">Progresso do Ano</p>
+                    <p className="goal-percent">{Math.min(dashboard.progress, 999)}%</p>
+                    <h3>Meta de economia</h3>
+                    <p className="card-subtitle">
+                      {dashboard.savingGoalPercentage}% da receita do mês
+                    </p>
                   </div>
                   <ShieldCheck size={22} className="goal-icon" />
                 </div>
 
                 <div className="goal-values">
-                  <span>{formatCurrency(dashboard.income)}</span>
-                  <span>{formatCurrency(dashboard.incomeGoal)}</span>
+                  <span>Guardado: {formatCurrency(dashboard.actualSavedAmount)}</span>
+                  <span>Meta: {formatCurrency(dashboard.savingGoalAmount)}</span>
                 </div>
 
                 <div className="progress-bar">
@@ -396,6 +444,27 @@ export default function DashboardLayout({
                     style={{ width: `${Math.min(dashboard.progress, 100)}%` }}
                   />
                 </div>
+
+                <p
+                  className={`card-subtitle ${
+                    dashboard.goalAchieved ? "goal-message-success" : "goal-message-warning"
+                  }`}
+                  style={{ marginTop: 12 }}
+                >
+                  {dashboard.financialMessage}
+                </p>
+
+                <button
+                  type="button"
+                  className="goal-edit-button"
+                  onClick={() => {
+                    setGoalPercentage(dashboard.savingGoalPercentage);
+                    setGoalMessage("");
+                    setShowGoalModal(true);
+                  }}
+                >
+                  Alterar meta
+                </button>
               </div>
 
               <div className="card">
@@ -440,7 +509,7 @@ export default function DashboardLayout({
                 </div>
 
                 <div className="notification-box">
-                  Seus gráficos agora usam os dados reais cadastrados. Finalmente pararam de fingir.
+                    {/* Adicionar notificações */}
                 </div>
               </div>
 
@@ -494,6 +563,48 @@ export default function DashboardLayout({
             </aside>
           </section>
         </main>
+        {showGoalModal && (
+          <div className="goal-modal-backdrop">
+            <form className="goal-modal" onSubmit={handleSaveGoal}>
+              <h3>Alterar meta de economia</h3>
+
+              <p className="card-subtitle">
+                Informe qual percentual da sua receita mensal deseja guardar.
+              </p>
+
+              <label className="goal-modal-label">
+                Percentual (%)
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="0.5"
+                  value={goalPercentage}
+                  onChange={(e) => setGoalPercentage(e.target.value)}
+                  required
+                />
+              </label>
+
+              <div className="goal-modal-presets">
+                {[5, 10, 15, 20].map((value) => (
+                  <button key={value} type="button" onClick={() => setGoalPercentage(value)}>
+                    {value}%
+                  </button>
+                ))}
+              </div>
+
+              <div className="goal-modal-actions">
+                <button type="button" onClick={() => setShowGoalModal(false)}>
+                  Cancelar
+                </button>
+
+                <button type="submit" disabled={savingGoal}>
+                  {savingGoal ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
